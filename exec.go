@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"os"
 	"sync/atomic"
 	"time"
@@ -32,6 +31,7 @@ const (
 // Executor ...
 type Executor struct {
 	state  map[string][]byte
+	cmds   *[]pb.Command
 	cancel context.CancelFunc
 
 	logT    LogStrat
@@ -64,7 +64,7 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 		break
 
 	case TradLog:
-		fn := "/tmp/logfile.log"
+		fn := logsDir + "logfile.log"
 		ex.logFile, err = os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
 		if err != nil {
 			return nil, err
@@ -76,7 +76,7 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 			Tick:    beelog.Interval,
 			Period:  uint32(beelogInterval),
 			KeepAll: true,
-			Fname:   "/tmp/beelog.log",
+			Fname:   logsDir + "beelog.log",
 		}
 		ex.ct, err = beelog.NewConcTableWithConfig(ctx, cfg)
 		if err != nil {
@@ -85,21 +85,33 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 
 	default:
 		return nil, fmt.Errorf("unknown log strategy '%d' provided", ls)
-
 	}
 
 	go ex.monitorThroughput(ctx)
 	return ex, nil
 }
 
-// InstallRecovExecutorFromReader ...
-func (ex *Executor) installStateFromReader(rd io.Reader) error {
-	cmds, err := bl.UnmarshalLogFromReader(rd)
+func (ex *Executor) loadCommandLog(fn string) error {
+	rd, err := os.OpenFile(fn, os.O_RDONLY, 0400)
 	if err != nil {
 		return err
 	}
 
-	for _, cmd := range cmds {
+	cmds, err := bl.UnmarshalLogFromReader(rd)
+	if err != nil {
+		return err
+	}
+	ex.cmds = &cmds
+	return nil
+}
+
+func (ex *Executor) runLoadedLog() error {
+	if ex.cmds == nil {
+		return fmt.Errorf("empty command log, load it first")
+	}
+
+	var err error
+	for _, cmd := range *ex.cmds {
 		err = ex.logCommand(&cmd)
 		if err != nil {
 			return err
@@ -149,7 +161,6 @@ func (ex *Executor) logCommand(cmd *pb.Command) error {
 
 	default:
 		return fmt.Errorf("unknown log strategy '%d' provided", ex.logT)
-
 	}
 	return nil
 }
@@ -168,4 +179,16 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+func (ex *Executor) shutdown() {
+	ex.cancel()
+	switch ex.logT {
+	case TradLog:
+		ex.logFile.Close()
+
+	case Beelog:
+		ex.ct.Shutdown()
+	}
+	ex.thrFile.Close()
 }
