@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -45,7 +46,8 @@ type Executor struct {
 
 // NewExecutor ...
 func NewExecutor(ls LogStrat) (*Executor, error) {
-	fd, err := os.OpenFile(outThrDir, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
+	fn := outThrDir + "thr-int-" + strconv.Itoa(beelogInterval) + ".out"
+	fd, err := os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +80,7 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 			KeepAll: true,
 			Fname:   logsDir + "beelog.log",
 		}
-		ex.ct, err = beelog.NewConcTableWithConfig(ctx, cfg)
+		ex.ct, err = beelog.NewConcTableWithConfig(ctx, beelogConcLevel, cfg)
 		if err != nil {
 			return nil, err
 		}
@@ -182,6 +184,9 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 }
 
 func (ex *Executor) shutdown() {
+	// wait for throughput wrt
+	time.Sleep(time.Second)
+
 	ex.cancel()
 	switch ex.logT {
 	case TradLog:
