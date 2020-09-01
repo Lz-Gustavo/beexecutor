@@ -15,12 +15,26 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+// LogStrat ...
+type LogStrat int8
+
+const (
+	// NotLog ...
+	NotLog LogStrat = iota
+
+	// TradLog ...
+	TradLog
+
+	// Beelog ...
+	Beelog
+)
+
 // Executor ...
 type Executor struct {
 	state  map[string][]byte
 	cancel context.CancelFunc
 
-	trad    bool
+	logT    LogStrat
 	logFile *os.File
 	ct      *beelog.ConcTable
 
@@ -30,12 +44,52 @@ type Executor struct {
 }
 
 // NewExecutor ...
-func NewExecutor() *Executor {
-	// TODO: initialize with new set of attributes
-	m := &Executor{
-		state: make(map[string][]byte, 0),
+func NewExecutor(ls LogStrat) (*Executor, error) {
+	fd, err := os.OpenFile(outThrDir, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
+	if err != nil {
+		return nil, err
 	}
-	return m
+
+	ctx, cn := context.WithCancel(context.Background())
+	ex := &Executor{
+		state:   make(map[string][]byte, 0),
+		cancel:  cn,
+		logT:    ls,
+		t:       time.NewTicker(time.Second),
+		thrFile: fd,
+	}
+
+	switch ls {
+	case NotLog:
+		break
+
+	case TradLog:
+		fn := "/tmp/logfile.log"
+		ex.logFile, err = os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
+		if err != nil {
+			return nil, err
+		}
+
+	case Beelog:
+		cfg := &beelog.LogConfig{
+			Alg:     beelog.IterConcTable,
+			Tick:    beelog.Interval,
+			Period:  uint32(beelogInterval),
+			KeepAll: true,
+			Fname:   "/tmp/beelog.log",
+		}
+		ex.ct, err = beelog.NewConcTableWithConfig(ctx, cfg)
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, fmt.Errorf("unknown log strategy '%d' provided", ls)
+
+	}
+
+	go ex.monitorThroughput(ctx)
+	return ex, nil
 }
 
 // InstallRecovExecutorFromReader ...
@@ -46,11 +100,11 @@ func (ex *Executor) installStateFromReader(rd io.Reader) error {
 	}
 
 	for _, cmd := range cmds {
-		ex.runCommand(&cmd)
 		err = ex.logCommand(&cmd)
 		if err != nil {
 			return err
 		}
+		ex.runCommand(&cmd)
 	}
 	return nil
 }
@@ -64,31 +118,39 @@ func (ex *Executor) runCommand(cmd *pb.Command) {
 	default:
 		break
 	}
+	atomic.AddUint32(&ex.count, 1)
 }
 
 func (ex *Executor) logCommand(cmd *pb.Command) error {
-	if ex.trad {
-		rawCmd, err := proto.Marshal(cmd)
+	switch ex.logT {
+	case NotLog:
+		return nil
+
+	case TradLog:
+		raw, err := proto.Marshal(cmd)
 		if err != nil {
 			return err
 		}
 
-		err = binary.Write(ex.logFile, binary.BigEndian, int32(len(rawCmd)))
+		err = binary.Write(ex.logFile, binary.BigEndian, int32(len(raw)))
 		if err != nil {
 			return err
 		}
 
-		_, err = ex.logFile.Write(rawCmd)
+		_, err = ex.logFile.Write(raw)
 		if err != nil {
 			return err
 		}
 
-	} else {
+	case Beelog:
 		if err := ex.ct.Log(*cmd); err != nil {
 			return err
 		}
+
+	default:
+		return fmt.Errorf("unknown log strategy '%d' provided", ex.logT)
+
 	}
-	atomic.AddUint32(&ex.count, 1)
 	return nil
 }
 
@@ -106,28 +168,4 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			}
 		}
 	}
-}
-
-// checkLogCountingDiffKeys executes received commands on mock state, returning the
-// number of different keys identified
-func (ex *Executor) checkLogCountingDiffKeys(log []pb.Command) int {
-	diff := 0
-	for _, cmd := range log {
-		if _, ok := ex.state[cmd.Key]; !ok {
-			diff++
-		}
-
-		switch cmd.Op {
-		case pb.Command_SET:
-			ex.state[cmd.Key] = []byte(cmd.Value)
-
-		case pb.Command_GET:
-			// insert an empty value to count READ operations on unique keys
-			ex.state[cmd.Key] = []byte{}
-
-		default:
-			break
-		}
-	}
-	return diff
 }

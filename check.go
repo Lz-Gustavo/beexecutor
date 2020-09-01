@@ -9,12 +9,49 @@ import (
 	"strings"
 
 	bl "github.com/Lz-Gustavo/beelog"
+	"github.com/Lz-Gustavo/beelog/pb"
 )
 
 const (
 	disktradLogs = "logfile*.log"
 	beelogLogs   = "beelog*.log"
 )
+
+// LogVerifier ...
+type LogVerifier struct {
+	state map[string][]byte
+}
+
+// NewLogVerifier ...
+func NewLogVerifier() *LogVerifier {
+	return &LogVerifier{
+		state: make(map[string][]byte, 0),
+	}
+}
+
+// checkLogCountingDiffKeys executes received commands on mock state, returning the
+// number of different keys identified.
+func (lv *LogVerifier) checkLogCountingDiffKeys(log []pb.Command) int {
+	diff := 0
+	for _, cmd := range log {
+		if _, ok := lv.state[cmd.Key]; !ok {
+			diff++
+		}
+
+		switch cmd.Op {
+		case pb.Command_SET:
+			lv.state[cmd.Key] = []byte(cmd.Value)
+
+		case pb.Command_GET:
+			// insert an empty value to count READ operations on unique keys
+			lv.state[cmd.Key] = []byte{}
+
+		default:
+			break
+		}
+	}
+	return diff
+}
 
 func checkLocalLogs() error {
 	fmt.Println(
@@ -47,7 +84,7 @@ func checkLocalLogs() error {
 			diff, nCmds int
 			totalSize   int64
 		)
-		exec := NewExecutor()
+		state := NewLogVerifier()
 
 		for _, fn := range l {
 			fd, err := os.OpenFile(fn, os.O_RDONLY, 0400)
@@ -67,7 +104,7 @@ func checkLocalLogs() error {
 				fd.Close()
 				return err
 			}
-			dk := exec.checkLogCountingDiffKeys(cmds)
+			dk := state.checkLogCountingDiffKeys(cmds)
 
 			nCmds += len(cmds)
 			diff += dk
