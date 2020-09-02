@@ -6,10 +6,12 @@ import (
 )
 
 var (
-	// If informed, executes the log verifier script on log 'checkDir' instead of executing log files.
+	// If informed, executes the log verifier script on log 'checkDir' instead of executing
+	// log files.
 	checkDir string
 
-	// Indicates whether retrieved logs should be sorted before being sequentially applied during verification.
+	// Indicates whether retrieved logs should be sorted before being sequentially applied
+	// during verification.
 	sortLogs bool
 
 	// Input file of commands, throughput output and logs destinations.

@@ -72,6 +72,13 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 			return nil, err
 		}
 
+		// in compliance with the beelog log format definition, which allows the reutilization
+		// of its marshal/unmarshal procedures
+		_, err = fmt.Fprintf(ex.logFile, "%d\n%d\n%d\n", uint64(0), uint64(0), -1)
+		if err != nil {
+			return nil, err
+		}
+
 	case Beelog:
 		cfg := &beelog.LogConfig{
 			Alg:     beelog.IterConcTable,
