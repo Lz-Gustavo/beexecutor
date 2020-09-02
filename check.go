@@ -72,9 +72,11 @@ func checkLocalLogs() error {
 	}
 	blogs = rmvRepetitiveLogs(blogs)
 
-	// sorts by lenght and lexicographically for equal len
-	sort.Sort(byLenAlpha(dlogs))
-	sort.Sort(byLenAlpha(blogs))
+	if sortLogs {
+		// sorts by lenght and lexicographically for equal len
+		sort.Sort(byLenAlpha(dlogs))
+		sort.Sort(byLenAlpha(blogs))
+	}
 
 	logs := [][]string{dlogs, blogs}
 	names := []string{"disktrad", "beelog"}

@@ -9,24 +9,25 @@ var (
 	// If informed, executes the log verifier script on log 'checkDir' instead of executing log files.
 	checkDir string
 
-	inputFile string
-	outThrDir string
-	logsDir   string
+	// Indicates whether retrieved logs should be sorted before being sequentially applied during verification.
+	sortLogs bool
 
-	logStrategy     int
-	beelogInterval  int
-	beelogConcLevel int
+	// Input file of commands, throughput output and logs destinations.
+	inputFile, outThrDir, logsDir string
+
+	// Sets the desired log strategy and configures beelog.
+	logStrategy, beelogInterval, beelogConcLevel int
 )
 
 func init() {
-	flag.StringVar(&inputFile, "input", "", "set the input log file to be loaded and executed")
 	flag.StringVar(&checkDir, "check", "", "inform a check location to switch execution between the log verifier and executor, defaults to the later")
-	flag.StringVar(&outThrDir, "output", "./", "set location to output throughput, defaults to ./")
-	flag.StringVar(&logsDir, "logfolder", "/tmp/", "set location to persist log files, defaults to /tmp/")
-
-	flag.IntVar(&logStrategy, "logstrat", 2, "set the desired log scenario, where (0: NotLog, 1: TradLog, 2: Beelog), defaults to the later")
+	flag.BoolVar(&sortLogs, "sort", false, "set if logs should be sorted before being sequentially applied during verification, only if -check=/path/ is informed")
+	flag.StringVar(&inputFile, "input", "", "set the input log file to be loaded and executed")
+	flag.StringVar(&outThrDir, "output", "./", "set location to output throughput")
+	flag.StringVar(&logsDir, "logfolder", "/tmp/", "set location to persist log files")
+	flag.IntVar(&logStrategy, "logstrat", 2, "set the desired log scenario, where (0: NotLog, 1: TradLog, 2: Beelog)")
 	flag.IntVar(&beelogInterval, "interval", 1000, "set beelog log interval, defaults to 1000")
-	flag.IntVar(&beelogConcLevel, "conclevel", 2, "set beelog concurrency level, number of table views, defaults to 2")
+	flag.IntVar(&beelogConcLevel, "conclevel", 2, "set beelog concurrency level, number of table views")
 }
 
 func main() {

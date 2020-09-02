@@ -3,11 +3,11 @@
 #path=/home/lzgustavo/go/src/beexecutor
 path=/users/gustavo/go/src/beexecutor
 
-inputsLocation="/tmp/input/"
+inputsLocation="/tmp/input"
 workloads=("workloada" "workloadb" "workloadc" "workloadd" "workloaddprime")
 logstratnames=("notlog" "trad" "beelog")
 
-logFolder="/tmp/"
+logFolder="/tmp/logs"
 beelogInterval=1000
 beelogConcLevel=2
 
@@ -23,7 +23,6 @@ fi
 
 if [[ ${2} -eq 2 ]]; then
 	# interval logfolder
-	echo "yeeeeeee"
 	logFolder="${logFolder}/int-${beelogInterval}"
 fi
 
