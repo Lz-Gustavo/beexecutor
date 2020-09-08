@@ -19,6 +19,9 @@ var (
 
 	// Sets the desired log strategy and configures beelog.
 	logStrategy, beelogInterval, beelogConcLevel int
+
+	// enables SyncIO, utilized while evaluating catastrophic fault models.
+	syncIO bool
 )
 
 func init() {
@@ -30,6 +33,7 @@ func init() {
 	flag.IntVar(&logStrategy, "logstrat", 2, "set the desired log scenario, where (0: NotLog, 1: TradLog, 2: Beelog)")
 	flag.IntVar(&beelogInterval, "interval", 1000, "set beelog log interval, defaults to 1000")
 	flag.IntVar(&beelogConcLevel, "conclevel", 2, "set beelog concurrency level, number of table views")
+	flag.BoolVar(&syncIO, "sync", false, "enables syncIO during log persistence")
 }
 
 func main() {

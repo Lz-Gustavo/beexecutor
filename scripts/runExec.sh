@@ -10,6 +10,7 @@ logstratnames=("notlog" "trad" "beelog")
 logFolder="/tmp/logs"
 beelogInterval=1000
 beelogConcLevel=2
+syncIO=false
 
 if [[ $# -ne 2 ]]; then
 	echo "usage: $0 'experimentFolder' 'logstrat (0: notlog, 1: tradlog, 2: beelog)'"
@@ -35,7 +36,7 @@ for i in ${workloads[*]}; do
 	mkdir -p ${logFolder}/${i}
 
 	echo "running for ${i}..."
-	$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${beelogInterval} -conclevel=${beelogConcLevel} -logfolder="${logFolder}/${i}/" -output=${dir}
+	$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${beelogInterval} -conclevel=${beelogConcLevel} -logfolder="${logFolder}/${i}/" -output=${dir} -sync=${syncIO}
 	echo "finished generating load ${i}..."; echo ""
 done
 

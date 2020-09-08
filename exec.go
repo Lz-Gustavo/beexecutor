@@ -29,6 +29,18 @@ const (
 	Beelog
 )
 
+func configBeelog() *bl.LogConfig {
+	return &bl.LogConfig{
+		Alg:     beelog.IterConcTable,
+		Sync:    syncIO,
+		Measure: true,
+		Tick:    beelog.Interval,
+		Period:  uint32(beelogInterval),
+		KeepAll: true,
+		Fname:   logsDir + "beelog.log",
+	}
+}
+
 // Executor ...
 type Executor struct {
 	state  map[string][]byte
@@ -67,7 +79,11 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 
 	case TradLog:
 		fn := logsDir + "logfile.log"
-		ex.logFile, err = os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
+		flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
+		if syncIO {
+			flags = flags | os.O_SYNC
+		}
+		ex.logFile, err = os.OpenFile(fn, flags, 0600)
 		if err != nil {
 			return nil, err
 		}
@@ -80,14 +96,7 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 		}
 
 	case Beelog:
-		cfg := &beelog.LogConfig{
-			Alg:     beelog.IterConcTable,
-			Tick:    beelog.Interval,
-			Period:  uint32(beelogInterval),
-			KeepAll: true,
-			Fname:   logsDir + "beelog.log",
-		}
-		ex.ct, err = beelog.NewConcTableWithConfig(ctx, beelogConcLevel, cfg)
+		ex.ct, err = beelog.NewConcTableWithConfig(ctx, beelogConcLevel, configBeelog())
 		if err != nil {
 			return nil, err
 		}
