@@ -33,7 +33,7 @@ func configBeelog() *bl.LogConfig {
 	return &bl.LogConfig{
 		Alg:     beelog.IterConcTable,
 		Sync:    syncIO,
-		Measure: true,
+		Measure: latencyMeasurement,
 		Tick:    beelog.Interval,
 		Period:  uint32(beelogInterval),
 		KeepAll: true,
@@ -54,6 +54,7 @@ type Executor struct {
 	count   uint32 // atomic
 	t       *time.Ticker
 	thrFile *os.File
+	latFile *os.File // TradLog only
 }
 
 // NewExecutor ...
@@ -93,6 +94,15 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 		_, err = fmt.Fprintf(ex.logFile, "%d\n%d\n%d\n", uint64(0), uint64(0), -1)
 		if err != nil {
 			return nil, err
+		}
+
+		if latencyMeasurement {
+			// beelog also outputs to logsDir, following the standard for now
+			fn := logsDir + "trad-latency.out"
+			ex.latFile, err = os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 	case Beelog:
@@ -157,6 +167,7 @@ func (ex *Executor) logCommand(cmd *pb.Command) error {
 		return nil
 
 	case TradLog:
+		st := time.Now()
 		raw, err := proto.Marshal(cmd)
 		if err != nil {
 			return err
@@ -170,6 +181,13 @@ func (ex *Executor) logCommand(cmd *pb.Command) error {
 		_, err = ex.logFile.Write(raw)
 		if err != nil {
 			return err
+		}
+
+		if latencyMeasurement {
+			dur := time.Since(st)
+			if _, err = fmt.Fprintf(ex.latFile, "%d\n", dur); err != nil {
+				return err
+			}
 		}
 
 	case Beelog:
@@ -207,6 +225,9 @@ func (ex *Executor) shutdown() {
 	switch ex.logT {
 	case TradLog:
 		ex.logFile.Close()
+		if latencyMeasurement {
+			ex.latFile.Close()
+		}
 
 	case Beelog:
 		ex.ct.Shutdown()
