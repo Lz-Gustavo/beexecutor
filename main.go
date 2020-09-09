@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
+	"time"
 )
 
 var (
@@ -25,6 +27,9 @@ var (
 
 	// Enables output of latency metrics during execution.
 	latencyMeasurement bool
+
+	// Sets a maximum execution time for log processing. Input loading is excluded from counting.
+	expTimeoutInMinutes int
 )
 
 func init() {
@@ -38,6 +43,7 @@ func init() {
 	flag.IntVar(&beelogConcLevel, "conclevel", 2, "set beelog concurrency level, number of table views")
 	flag.BoolVar(&syncIO, "sync", false, "enables syncIO during log persistence")
 	flag.BoolVar(&latencyMeasurement, "latency", false, "enables latency measurement during execution")
+	flag.IntVar(&expTimeoutInMinutes, "timeout", 0, "if greater than zero, sets a maximum execution time")
 }
 
 func main() {
@@ -65,6 +71,14 @@ func main() {
 	}
 	if err = exec.loadCommandLog(inputFile); err != nil {
 		log.Fatalln("could not load command log, failed with err:", err.Error())
+	}
+
+	if t := expTimeoutInMinutes; t > 0 {
+		go func() {
+			time.Sleep(time.Duration(t) * time.Minute)
+			exec.shutdown()
+			os.Exit(0)
+		}()
 	}
 
 	if err = exec.runLoadedLog(); err != nil {

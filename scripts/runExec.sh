@@ -13,6 +13,10 @@ beelogConcLevel=2
 
 syncIO=false
 latOut=true
+timeout=-1
+
+# 1: true, 0: false
+deleteLogsOutput=1
 
 if [[ $# -ne 2 ]]; then
 	echo "usage: $0 'experimentFolder' 'logstrat (0: notlog, 1: tradlog, 2: beelog)'"
@@ -38,8 +42,13 @@ for i in ${workloads[*]}; do
 	mkdir -p ${logFolder}/${i}
 
 	echo "running for ${i}..."
-	$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${beelogInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -output=${dir}
+	$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${beelogInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -output=${dir} -timeout=${timeout}
 	echo "finished generating load ${i}..."; echo ""
+
+	if [[ ${deleteLogsOutput} -eq 1 ]]; then
+		echo "deleting log files..."
+		find ${logFolder} -name "*.log" -delete
+	fi
 done
 
 echo "finished!"
