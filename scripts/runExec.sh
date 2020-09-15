@@ -5,10 +5,10 @@ path=/users/gustavo/go/src/beexecutor
 
 inputsLocation="/tmp/input"
 workloads=("workloada" "workloadb" "workloadc" "workloadd" "workloaddprime")
-logstratnames=("notlog" "trad" "beelog")
+logstratnames=("notlog" "trad" "beelog" "trad")
 
 logFolder="/tmp/logs"
-beelogInterval=1000
+persistInterval=1000
 beelogConcLevel=2
 
 syncIO=false
@@ -19,18 +19,18 @@ timeout=-1
 deleteLogsOutput=1
 
 if [[ $# -ne 2 ]]; then
-	echo "usage: $0 'experimentFolder' 'logstrat (0: notlog, 1: tradlog, 2: beelog)'"
+	echo "usage: $0 'experimentFolder' 'logstrat (0: notlog, 1: tradlog, 2: beelog, 3: tradbatch)'"
 	exit 1
 fi
 
-if [[ ${2} -lt 0 ]] || [[ ${2} -gt 2 ]]; then
+if [[ ${2} -lt 0 ]] || [[ ${2} -gt 3 ]]; then
 	echo "unsupported log strategy ${2} provided"
 	exit 1
 fi
 
 if [[ ${2} -eq 2 ]]; then
 	# interval logfolder
-	logFolder="${logFolder}/int-${beelogInterval}"
+	logFolder="${logFolder}/int-${persistInterval}"
 fi
 
 for i in ${workloads[*]}; do
@@ -42,7 +42,7 @@ for i in ${workloads[*]}; do
 	mkdir -p ${logFolder}/${i}
 
 	echo "running for ${i}..."
-	$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${beelogInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -output=${dir} -timeout=${timeout}
+	$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${persistInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -output=${dir} -timeout=${timeout}
 	echo "finished generating load ${i}..."; echo ""
 
 	if [[ ${deleteLogsOutput} -eq 1 ]]; then

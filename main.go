@@ -38,7 +38,7 @@ func init() {
 	flag.StringVar(&inputFile, "input", "", "set the input log file to be loaded and executed")
 	flag.StringVar(&outThrDir, "output", "./", "set location to output throughput")
 	flag.StringVar(&logsDir, "logfolder", "/tmp/", "set location to persist log files")
-	flag.IntVar(&logStrategy, "logstrat", 2, "set the desired log scenario, where (0: NotLog, 1: TradLog, 2: Beelog)")
+	flag.IntVar(&logStrategy, "logstrat", 2, "set the desired log scenario, where (0: NotLog, 1: TradLog, 2: Beelog, 3: TradBatch)")
 	flag.IntVar(&persistInterval, "interval", 1000, "set the log persistence interval for beelog or tradbatch, defaults to 1000")
 	flag.IntVar(&beelogConcLevel, "conclevel", 2, "set beelog concurrency level, number of table views")
 	flag.BoolVar(&syncIO, "sync", false, "enables syncIO during log persistence")
@@ -88,5 +88,5 @@ func main() {
 }
 
 func isValidLogStrategy() (LogStrat, bool) {
-	return LogStrat(logStrategy), (0 <= logStrategy && logStrategy < 3)
+	return LogStrat(logStrategy), (0 <= logStrategy && logStrategy < 4)
 }
