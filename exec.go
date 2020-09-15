@@ -55,7 +55,7 @@ type Executor struct {
 	logFile *os.File
 	ct      *beelog.ConcTable
 
-	batch      []*pb.Command
+	batchBuff  *bytes.Buffer
 	batchCount int // TradBatch only
 	batchLat   time.Time
 	measuring  bool
@@ -88,7 +88,7 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 		break
 
 	case TradLog, TradBatch:
-		ex.batch = make([]*pb.Command, 0)
+		ex.batchBuff = bytes.NewBuffer(nil)
 		fn := logsDir + "logfile.log"
 		flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
 		if syncIO {
@@ -194,31 +194,25 @@ func (ex *Executor) logCommand(cmd *pb.Command) error {
 }
 
 func (ex *Executor) batchLogToFile(cmd *pb.Command) error {
-	ex.batch = append(ex.batch, cmd)
+	// append command to buffer
+	raw, err := proto.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	err = binary.Write(ex.batchBuff, binary.BigEndian, int32(len(raw)))
+	if err != nil {
+		return err
+	}
+
+	_, err = ex.batchBuff.Write(raw)
+	if err != nil {
+		return err
+	}
+
 	ex.batchCount++
 	if ex.batchCount >= persistInterval {
-		ex.batchCount = 0
-		buf := bytes.NewBuffer(nil)
-
-		// populate a buffer then write to disk on a single call
-		for _, c := range ex.batch {
-			raw, err := proto.Marshal(c)
-			if err != nil {
-				return err
-			}
-
-			err = binary.Write(buf, binary.BigEndian, int32(len(raw)))
-			if err != nil {
-				return err
-			}
-
-			_, err = buf.Write(raw)
-			if err != nil {
-				return err
-			}
-		}
-
-		_, err := buf.WriteTo(ex.logFile)
+		_, err := ex.batchBuff.WriteTo(ex.logFile)
 		if err != nil {
 			return err
 		}
@@ -230,7 +224,8 @@ func (ex *Executor) batchLogToFile(cmd *pb.Command) error {
 			}
 			ex.measuring = false
 		}
-		ex.batch = make([]*pb.Command, 0)
+		ex.batchCount = 0
+		ex.batchBuff = bytes.NewBuffer(nil)
 
 	} else if latencyMeasurement && !ex.measuring {
 		ex.batchLat = time.Now()
