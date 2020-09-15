@@ -20,7 +20,7 @@ var (
 	inputFile, outThrDir, logsDir string
 
 	// Sets the desired log strategy and configures beelog.
-	logStrategy, beelogInterval, beelogConcLevel int
+	logStrategy, persistInterval, beelogConcLevel int
 
 	// SyncIO during log persistence, utilized while evaluating catastrophic fault models.
 	syncIO bool
@@ -39,7 +39,7 @@ func init() {
 	flag.StringVar(&outThrDir, "output", "./", "set location to output throughput")
 	flag.StringVar(&logsDir, "logfolder", "/tmp/", "set location to persist log files")
 	flag.IntVar(&logStrategy, "logstrat", 2, "set the desired log scenario, where (0: NotLog, 1: TradLog, 2: Beelog)")
-	flag.IntVar(&beelogInterval, "interval", 1000, "set beelog log interval, defaults to 1000")
+	flag.IntVar(&persistInterval, "interval", 1000, "set the log persistence interval for beelog or tradbatch, defaults to 1000")
 	flag.IntVar(&beelogConcLevel, "conclevel", 2, "set beelog concurrency level, number of table views")
 	flag.BoolVar(&syncIO, "sync", false, "enables syncIO during log persistence")
 	flag.BoolVar(&latencyMeasurement, "latency", false, "enables latency measurement during execution")

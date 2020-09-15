@@ -27,6 +27,9 @@ const (
 
 	// Beelog ...
 	Beelog
+
+	// TradBatch ...
+	TradBatch
 )
 
 func configBeelog() *bl.LogConfig {
@@ -35,7 +38,7 @@ func configBeelog() *bl.LogConfig {
 		Sync:    syncIO,
 		Measure: latencyMeasurement,
 		Tick:    beelog.Interval,
-		Period:  uint32(beelogInterval),
+		Period:  uint32(persistInterval),
 		KeepAll: true,
 		Fname:   logsDir + "beelog.log",
 	}
@@ -51,7 +54,10 @@ type Executor struct {
 	logFile *os.File
 	ct      *beelog.ConcTable
 
-	count   uint32 // atomic
+	batch      []*pb.Command
+	batchCount int    // TradBatch only
+	thrCount   uint32 // atomic
+
 	t       *time.Ticker
 	thrFile *os.File
 	latFile *os.File // TradLog only
@@ -59,7 +65,7 @@ type Executor struct {
 
 // NewExecutor ...
 func NewExecutor(ls LogStrat) (*Executor, error) {
-	fn := outThrDir + "thr-int-" + strconv.Itoa(beelogInterval) + ".out"
+	fn := outThrDir + "thr-int-" + strconv.Itoa(persistInterval) + ".out"
 	fd, err := os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
 	if err != nil {
 		return nil, err
@@ -78,7 +84,8 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 	case NotLog:
 		break
 
-	case TradLog:
+	case TradLog, TradBatch:
+		ex.batch = make([]*pb.Command, 0)
 		fn := logsDir + "logfile.log"
 		flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
 		if syncIO {
@@ -158,7 +165,7 @@ func (ex *Executor) runCommand(cmd *pb.Command) {
 	default:
 		break
 	}
-	atomic.AddUint32(&ex.count, 1)
+	atomic.AddUint32(&ex.thrCount, 1)
 }
 
 func (ex *Executor) logCommand(cmd *pb.Command) error {
@@ -167,28 +174,10 @@ func (ex *Executor) logCommand(cmd *pb.Command) error {
 		return nil
 
 	case TradLog:
-		st := time.Now()
-		raw, err := proto.Marshal(cmd)
-		if err != nil {
-			return err
-		}
+		return ex.logToFile(cmd)
 
-		err = binary.Write(ex.logFile, binary.BigEndian, int32(len(raw)))
-		if err != nil {
-			return err
-		}
-
-		_, err = ex.logFile.Write(raw)
-		if err != nil {
-			return err
-		}
-
-		if latencyMeasurement {
-			dur := time.Since(st)
-			if _, err = fmt.Fprintf(ex.latFile, "%d\n", dur); err != nil {
-				return err
-			}
-		}
+	case TradBatch:
+		return ex.batchLogToFile(cmd)
 
 	case Beelog:
 		if err := ex.ct.Log(*cmd); err != nil {
@@ -201,6 +190,48 @@ func (ex *Executor) logCommand(cmd *pb.Command) error {
 	return nil
 }
 
+func (ex *Executor) batchLogToFile(cmd *pb.Command) error {
+	ex.batch = append(ex.batch, cmd)
+	ex.batchCount++
+	if ex.batchCount >= persistInterval {
+		ex.batchCount = 0
+		for _, c := range ex.batch {
+			err := ex.logToFile(c)
+			if err != nil {
+				return err
+			}
+		}
+		ex.batch = make([]*pb.Command, 0)
+	}
+	return nil
+}
+
+func (ex *Executor) logToFile(cmd *pb.Command) error {
+	st := time.Now()
+	raw, err := proto.Marshal(cmd)
+	if err != nil {
+		return err
+	}
+
+	err = binary.Write(ex.logFile, binary.BigEndian, int32(len(raw)))
+	if err != nil {
+		return err
+	}
+
+	_, err = ex.logFile.Write(raw)
+	if err != nil {
+		return err
+	}
+
+	if latencyMeasurement {
+		dur := time.Since(st)
+		if _, err = fmt.Fprintf(ex.latFile, "%d\n", dur); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (ex *Executor) monitorThroughput(ctx context.Context) error {
 	for {
 		select {
@@ -208,7 +239,7 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			return nil
 
 		case <-ex.t.C:
-			t := atomic.SwapUint32(&ex.count, 0)
+			t := atomic.SwapUint32(&ex.thrCount, 0)
 			_, err := fmt.Fprintf(ex.thrFile, "%d\n", t)
 			if err != nil {
 				return err
@@ -223,7 +254,7 @@ func (ex *Executor) shutdown() {
 
 	ex.cancel()
 	switch ex.logT {
-	case TradLog:
+	case TradLog, TradBatch:
 		ex.logFile.Close()
 		if latencyMeasurement {
 			ex.latFile.Close()
