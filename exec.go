@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
@@ -55,7 +56,9 @@ type Executor struct {
 	ct      *beelog.ConcTable
 
 	batch      []*pb.Command
-	batchCount int    // TradBatch only
+	batchCount int // TradBatch only
+	batchLat   time.Time
+	measuring  bool
 	thrCount   uint32 // atomic
 
 	t       *time.Ticker
@@ -195,13 +198,43 @@ func (ex *Executor) batchLogToFile(cmd *pb.Command) error {
 	ex.batchCount++
 	if ex.batchCount >= persistInterval {
 		ex.batchCount = 0
+		buf := bytes.NewBuffer(nil)
+
+		// populate a buffer then write to disk on a single call
 		for _, c := range ex.batch {
-			err := ex.logToFile(c)
+			raw, err := proto.Marshal(c)
+			if err != nil {
+				return err
+			}
+
+			err = binary.Write(buf, binary.BigEndian, int32(len(raw)))
+			if err != nil {
+				return err
+			}
+
+			_, err = buf.Write(raw)
 			if err != nil {
 				return err
 			}
 		}
+
+		_, err := buf.WriteTo(ex.logFile)
+		if err != nil {
+			return err
+		}
+
+		if latencyMeasurement {
+			dur := time.Since(ex.batchLat)
+			if _, err = fmt.Fprintf(ex.latFile, "%d\n", dur); err != nil {
+				return err
+			}
+			ex.measuring = false
+		}
 		ex.batch = make([]*pb.Command, 0)
+
+	} else if latencyMeasurement && !ex.measuring {
+		ex.batchLat = time.Now()
+		ex.measuring = true
 	}
 	return nil
 }
