@@ -108,7 +108,7 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 
 		if latencyMeasurement {
 			// beelog also outputs to logsDir, following the standard for now
-			fn := logsDir + "trad-latency.out"
+			fn := logsDir + "trad-" + strconv.Itoa(persistInterval) + "-latency.out"
 			ex.latFile, err = os.OpenFile(fn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
 			if err != nil {
 				return nil, err

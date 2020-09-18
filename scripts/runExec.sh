@@ -5,7 +5,8 @@ path=/users/gustavo/go/src/beexecutor
 
 inputsLocation="/tmp/input"
 workloads=("workloada" "workloadb" "workloadc" "workloadd" "workloaddprime")
-logstratnames=("notlog" "trad" "beelog" "trad")
+#workloads=("workloada")
+logstratnames=("notlog" "trad" "beelog" "tradbatch")
 
 logFolder="/tmp/logs"
 persistInterval=1000
@@ -13,7 +14,7 @@ beelogConcLevel=2
 
 syncIO=false
 latOut=true
-timeout=-1
+timeout=10
 
 # 1: true, 0: false
 deleteLogsOutput=1
