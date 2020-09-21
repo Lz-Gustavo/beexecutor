@@ -88,6 +88,10 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 		break
 
 	case TradLog, TradBatch:
+		if ls == TradLog {
+			persistInterval = 1
+		}
+
 		ex.batchBuff = bytes.NewBuffer(nil)
 		fn := logsDir + "logfile.log"
 		flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
@@ -116,7 +120,13 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 		}
 
 	case Beelog:
-		ex.ct, err = beelog.NewConcTableWithConfig(ctx, beelogConcLevel, configBeelog())
+		bc := configBeelog()
+		if secondaryLogDir != "" {
+			bc.ParallelIO = true
+			bc.SecondFname = secondaryLogDir + "logfile.log"
+		}
+
+		ex.ct, err = beelog.NewConcTableWithConfig(ctx, beelogConcLevel, bc)
 		if err != nil {
 			return nil, err
 		}

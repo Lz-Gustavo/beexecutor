@@ -19,6 +19,9 @@ var (
 	// Input file of commands, throughput output and logs destinations.
 	inputFile, outThrDir, logsDir string
 
+	// Enables ParallelIO by informing a second log dir to alternate log files persistence.
+	secondaryLogDir string
+
 	// Sets the desired log strategy and configures beelog.
 	logStrategy, persistInterval, beelogConcLevel int
 
@@ -44,6 +47,7 @@ func init() {
 	flag.BoolVar(&syncIO, "sync", false, "enables syncIO during log persistence")
 	flag.BoolVar(&latencyMeasurement, "latency", false, "enables latency measurement during execution")
 	flag.IntVar(&expTimeoutInMinutes, "timeout", 0, "if greater than zero, sets a maximum execution time")
+	flag.StringVar(&secondaryLogDir, "secdisk", "", "if informed, enables parallel log persistence by alternating between two log file destinations")
 }
 
 func main() {

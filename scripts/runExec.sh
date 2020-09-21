@@ -4,12 +4,16 @@
 path=/users/gustavo/go/src/beexecutor
 
 inputsLocation="/tmp/input"
+
 workloads=("workloada" "workloadb" "workloadc" "workloadd" "workloaddprime")
 #workloads=("workloada")
 logstratnames=("notlog" "trad" "beelog" "tradbatch")
 
 logFolder="/tmp/logs"
-persistInterval=1000
+secondDisk="/tmp/logs2"
+#secondDisk=""
+
+persistInterval=100
 beelogConcLevel=2
 
 syncIO=false
@@ -29,10 +33,10 @@ if [[ ${2} -lt 0 ]] || [[ ${2} -gt 3 ]]; then
 	exit 1
 fi
 
-if [[ ${2} -eq 2 ]]; then
-	# interval logfolder
-	logFolder="${logFolder}/int-${persistInterval}"
-fi
+# if [[ ${2} -eq 2 ]]; then
+# 	# interval logfolder
+# 	logFolder="${logFolder}/int-${persistInterval}"
+# fi
 
 for i in ${workloads[*]}; do
 	# root/workload/logstrat
@@ -43,12 +47,20 @@ for i in ${workloads[*]}; do
 	mkdir -p ${logFolder}/${i}
 
 	echo "running for ${i}..."
-	$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${persistInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -output=${dir} -timeout=${timeout}
+	# not empty
+	if [[ ! -z "${secondDisk}" ]]; then
+		echo "info: 2 disks config"
+		mkdir -p ${secondDisk}/${i}
+		$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${persistInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -secdisk="${secondDisk}/${i}/" -output=${dir} -timeout=${timeout}
+	else
+		$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${persistInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -output=${dir} -timeout=${timeout}
+	fi
 	echo "finished generating load ${i}..."; echo ""
 
 	if [[ ${deleteLogsOutput} -eq 1 ]]; then
 		echo "deleting log files..."
 		find ${logFolder} -name "*.log" -delete
+		find ${secondDisk} -name "*.log" -delete
 	fi
 done
 
