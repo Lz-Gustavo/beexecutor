@@ -1,22 +1,32 @@
 #!/bin/bash
 
-#path=/home/lzgustavo/go/src/beexecutor
 path=/users/gustavo/go/src/beexecutor
 
 inputsLocation="/tmp/input"
 
-workloads=("workloada" "workloadb" "workloadc" "workloadd" "workloaddprime")
-#workloads=("workloada")
+workloads=("workloada" "workloadalatest" "workloadaprime" "workloadb" "workloadd")
 logstratnames=("notlog" "trad" "beelog" "tradbatch")
 
-logFolder="/tmp/logs"
-secondDisk="/tmp/logs2"
+logFolder="/media/disk1"
+
+secondDisk="/media/disk2"
 #secondDisk=""
 
-persistInterval=100
+# ---------------------------------------
+# local config:
+# ---------------------------------------
+#path=/home/lzgustavo/go/src/beexecutor
+#inputsLocation="/home/lzgustavo/Beelog-Exp/inputLogs/"
+#workloads=("workloada")
+
+#logFolder="/tmp/logs"
+#secondDisk="/home/lzgustavo/logs2"
+#----------------------------------------
+
+persistInterval=1000
 beelogConcLevel=2
 
-syncIO=false
+syncIO=true
 latOut=true
 timeout=10
 
@@ -42,25 +52,30 @@ for i in ${workloads[*]}; do
 	# root/workload/logstrat
 	dir="${1}/${i}/${logstratnames[${2}]}/"
 
-	echo "creating ${dir} dir..."
+	echo "[info] creating ${dir} dir..."
 	mkdir -p ${dir} # no error if exists
 	mkdir -p ${logFolder}/${i}
 
-	echo "running for ${i}..."
+	echo "[info] running for ${i}..."
 	# not empty
 	if [[ ! -z "${secondDisk}" ]]; then
-		echo "info: 2 disks config"
+		echo "[info] 2 disks config"
 		mkdir -p ${secondDisk}/${i}
 		$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${persistInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -secdisk="${secondDisk}/${i}/" -output=${dir} -timeout=${timeout}
 	else
 		$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${persistInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -output=${dir} -timeout=${timeout}
 	fi
-	echo "finished generating load ${i}..."; echo ""
+	echo "[info] finished generating load ${i}..."; echo ""
 
 	if [[ ${deleteLogsOutput} -eq 1 ]]; then
-		echo "deleting log files..."
+		echo "[info] deleting log files..."
 		find ${logFolder} -name "*.log" -delete
 		find ${secondDisk} -name "*.log" -delete
+	fi
+
+	if [[ ${latOut} == "true" ]]; then
+		echo "[info] moving latency file..."
+		mv ${logFolder} ${1}
 	fi
 done
 
