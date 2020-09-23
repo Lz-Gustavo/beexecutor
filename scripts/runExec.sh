@@ -20,7 +20,7 @@ secondDisk="/media/disk2"
 #workloads=("workloada")
 
 #logFolder="/tmp/logs"
-#secondDisk="/home/lzgustavo/logs2"
+#secondDisk="/tmp/logs2"
 #----------------------------------------
 
 persistInterval=1000
@@ -65,7 +65,7 @@ for i in ${workloads[*]}; do
 	else
 		$path/beexecutor -input="${inputsLocation}/${i}.log" -logstrat=${2} -interval=${persistInterval} -conclevel=${beelogConcLevel} -sync=${syncIO} -latency=${latOut} -logfolder="${logFolder}/${i}/" -output=${dir} -timeout=${timeout}
 	fi
-	echo "[info] finished generating load ${i}..."; echo ""
+	echo "[info] finished generating load ${i}..."
 
 	if [[ ${deleteLogsOutput} -eq 1 ]]; then
 		echo "[info] deleting log files..."
@@ -75,8 +75,9 @@ for i in ${workloads[*]}; do
 
 	if [[ ${latOut} == "true" ]]; then
 		echo "[info] moving latency file..."
-		mv ${logFolder} ${1}
+		mv ${logFolder}/${i}/*.out ${1}/${i}/
 	fi
+	echo ""
 done
 
 echo "finished!"
