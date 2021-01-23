@@ -2,12 +2,16 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"time"
 )
 
 var (
+	// TODO: describe...
+	execMode int
+
 	// If informed, executes the log verifier script on log 'checkDir' instead of executing
 	// log files.
 	checkDir string
@@ -36,6 +40,9 @@ var (
 )
 
 func init() {
+	// TODO: adequate others description and runExec script for new init flag
+	flag.IntVar(&execMode, "mode", 0, "set the desired execution mode, where (0: log verifier, 1: log executor, 2: etcd client)")
+
 	flag.StringVar(&checkDir, "check", "", "inform a check location to switch execution between the log verifier and executor, defaults to the later")
 	flag.BoolVar(&sortLogs, "sort", false, "set if logs should be sorted before being sequentially applied during verification, only if -check=/path/ is informed")
 	flag.StringVar(&inputFile, "input", "", "set the input log file to be loaded and executed")
@@ -52,29 +59,48 @@ func init() {
 
 func main() {
 	flag.Parse()
-	if checkDir != "" {
-		err := checkLocalLogs()
-		if err != nil {
+	if !isValidExecMode() {
+		log.Fatalln("unknow exec mode '", execMode, "' provided.")
+	}
+
+	switch execMode {
+	case 0:
+		if checkDir == "" {
+			log.Fatalln("must inform a folder location to run the log verifier, run with: './beexecutor -check=/path/to/folder/'")
+		}
+
+		if err := checkLocalLogs(); err != nil {
 			log.Fatalln("failed logs verification with err: '", err.Error(), "'")
 		}
 		return
-	}
 
+	case 1:
+		if err := runExecutor(); err != nil {
+			log.Fatalln("failed log executor with err: '", err.Error(), "'")
+		}
+		return
+
+	case 2:
+		// TODO: run etcd client procedure
+	}
+}
+
+func runExecutor() error {
 	if inputFile == "" {
-		log.Fatalln("must inform an input log file, run with: './beexecutor -input=/path/to/file.log'")
+		return fmt.Errorf("must inform an input log file, run with: './beexecutor -input=/path/to/file.log'")
 	}
 
 	ls, ok := isValidLogStrategy()
 	if !ok {
-		log.Fatalln("unknown log strategy provided")
+		return fmt.Errorf("unknown log strategy provided")
 	}
 
 	exec, err := NewExecutor(ls)
 	if err != nil {
-		log.Fatalln("could not init log executor, failed with err:", err.Error())
+		return fmt.Errorf("could not init log executor, failed with err: %s", err.Error())
 	}
 	if err = exec.loadCommandLog(inputFile); err != nil {
-		log.Fatalln("could not load command log, failed with err:", err.Error())
+		return fmt.Errorf("could not load command log, failed with err: %s", err.Error())
 	}
 
 	if t := expTimeoutInMinutes; t > 0 {
@@ -85,12 +111,19 @@ func main() {
 		}()
 	}
 
-	if err = exec.runLoadedLog(); err != nil {
-		log.Fatalln("failed during log execution, err:", err.Error())
+	err = exec.runLoadedLog()
+	if err != nil {
+		return err
 	}
+
 	exec.shutdown()
+	return nil
 }
 
 func isValidLogStrategy() (LogStrat, bool) {
 	return LogStrat(logStrategy), (0 <= logStrategy && logStrategy < 4)
+}
+
+func isValidExecMode() bool {
+	return 0 <= execMode && execMode < 3
 }
