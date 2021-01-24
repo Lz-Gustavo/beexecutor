@@ -3,7 +3,7 @@ module beexecutor
 go 1.15
 
 require (
-	github.com/Lz-Gustavo/beelog v0.0.0-20200923194543-670bc34404a3
+	github.com/Lz-Gustavo/beemport v0.0.0-20210123202457-478595c82e48
 	github.com/coreos/bbolt v0.0.0-00010101000000-000000000000 // indirect
 	github.com/coreos/etcd v3.3.25+incompatible // indirect
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f // indirect

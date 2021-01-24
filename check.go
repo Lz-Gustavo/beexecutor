@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
-	bl "github.com/Lz-Gustavo/beelog"
-	"github.com/Lz-Gustavo/beelog/pb"
+	bl "github.com/Lz-Gustavo/beemport"
+	"github.com/Lz-Gustavo/beemport/pb"
 )
 
 const (

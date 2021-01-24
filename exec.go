@@ -10,9 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Lz-Gustavo/beelog"
-	bl "github.com/Lz-Gustavo/beelog"
-	"github.com/Lz-Gustavo/beelog/pb"
+	bl "github.com/Lz-Gustavo/beemport"
+	"github.com/Lz-Gustavo/beemport/pb"
 	"github.com/golang/protobuf/proto"
 )
 
@@ -35,10 +34,9 @@ const (
 
 func configBeelog() *bl.LogConfig {
 	return &bl.LogConfig{
-		Alg:     beelog.IterConcTable,
 		Sync:    syncIO,
 		Measure: latencyMeasurement,
-		Tick:    beelog.Interval,
+		Tick:    bl.Interval,
 		Period:  uint32(persistInterval),
 		KeepAll: true,
 		Fname:   logsDir + "beelog.log",
@@ -53,7 +51,7 @@ type Executor struct {
 
 	logT    LogStrat
 	logFile *os.File
-	ct      *beelog.ConcTable
+	ct      *bl.ConcTable
 
 	cmdBuff    *bytes.Buffer
 	batchCount int // TradBatch only
@@ -126,7 +124,7 @@ func NewExecutor(ls LogStrat) (*Executor, error) {
 			bc.SecondFname = secondaryLogDir + "logfile.log"
 		}
 
-		ex.ct, err = beelog.NewConcTableWithConfig(ctx, beelogConcLevel, bc)
+		ex.ct, err = bl.NewConcTableWithConfig(ctx, beelogConcLevel, bc)
 		if err != nil {
 			return nil, err
 		}
