@@ -16,6 +16,9 @@ var (
 	// TODO: parse a comma-separated list of strings if multiples endpoints are necessary.
 	etcdIPAddr string
 
+	// If informed, measures and outputs client-side latency to 'latOutFn' file.
+	latOutFn string
+
 	// Sets a maximum execution time for log processing. Input loading is excluded from counting.
 	expTimeoutInMinutes int
 )
@@ -23,7 +26,8 @@ var (
 func init() {
 	flag.StringVar(&inputFile, "input", "", "set the input log file to be loaded and executed")
 	flag.StringVar(&etcdIPAddr, "etcd", defaultEtcdIP, "set the etcd server node, defaults to 127.0.0.1 (localhost)")
-	flag.IntVar(&expTimeoutInMinutes, "timeout", 0, "if greater than zero, sets a maximum execution time")
+	flag.StringVar(&latOutFn, "latencyout", "", "sets latency output filename, enabling latency measurement during execution")
+	flag.IntVar(&expTimeoutInMinutes, "timeout", 0, "if greater than zero, sets a maximum execution time in minutes")
 }
 
 func main() {

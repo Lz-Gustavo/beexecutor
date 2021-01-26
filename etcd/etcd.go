@@ -23,6 +23,9 @@ type EtcdClient struct {
 	cl     *clientv3.Client
 	cmds   *[]pb.Command
 	cancel context.CancelFunc
+
+	lat     bool
+	latFile *os.File
 }
 
 // NewEtcdClient ...
@@ -38,12 +41,24 @@ func NewEtcdClient(ctx context.Context) (*EtcdClient, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	ec.cl = cl
+
+	if latOutFn != "" {
+		ec.latFile, err = os.OpenFile(latOutFn, os.O_CREATE|os.O_TRUNC|os.O_WRONLY|os.O_APPEND, 0600)
+		if err != nil {
+			return nil, err
+		}
+		ec.lat = true
+	}
 	return ec, nil
 }
 
 func (ec *EtcdClient) sendCommand(ctx context.Context, cmd *pb.Command) error {
+	var st time.Time
+	if ec.lat {
+		st = time.Now()
+	}
+
 	var err error
 	switch cmd.Op {
 	case pb.Command_GET:
@@ -58,7 +73,17 @@ func (ec *EtcdClient) sendCommand(ctx context.Context, cmd *pb.Command) error {
 	default:
 		return errors.New("unsupported command operation provided")
 	}
-	return err
+	if err != nil {
+		return err
+	}
+
+	if ec.lat {
+		dur := time.Since(st)
+		if _, err = fmt.Fprintf(ec.latFile, "%d\n", dur); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (ec *EtcdClient) loadCommandLog(fn string) error {
@@ -93,4 +118,7 @@ func (ec *EtcdClient) runLoadedLog(ctx context.Context) error {
 func (ec *EtcdClient) shutdown() {
 	ec.cl.Close()
 	ec.cancel()
+	if ec.lat {
+		ec.latFile.Close()
+	}
 }
